@@ -1,7 +1,5 @@
 # Division-Free 4th-Order Neumann Admittance & Schmitt-Trigger Hysteretic CBF for Bimanual Manipulation
-
-## Overview
-
+### 👉 [Click Here to Launch the Live 60 FPS Interactive Benchmark](https://pwmorse-dotcom.github.io/bimanual-neumann-cbf-benchmark/)
 Bimanual closed-chain manipulation faces three classical control bottlenecks on resource-constrained edge hardware:
 
 1. **Matrix Inversion Overhead & Singularity Spikes:** Standard Levenberg-Marquardt Damped Least-Squares (DLS) requires explicit O(n^3) floating-point matrix division at every control tick.

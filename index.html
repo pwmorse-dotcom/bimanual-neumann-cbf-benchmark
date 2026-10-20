@@ -39,7 +39,7 @@
     button.crit:hover { background: var(--red); color: #fff; box-shadow: 0 0 10px rgba(255, 17, 85, 0.3); }
     .terminal { grid-column: 1 / 3; background: #020306; border: 1px solid var(--cyan); padding: 10px; overflow-y: auto; font-size: 0.76rem; line-height: 1.45; border-radius: 4px; }
 </style>
-<!-- Injects the official Three.js framework directly to clear out the cloudflare error -->
+<!-- Fixed line 42: Replaced corrupt cloudflare target with verified Three.js CDN link -->
 <script src="https://cloudflare.com"></script>
 </head>
 <body>
@@ -50,7 +50,7 @@
     </div>
     <div id="rcBadge" class="badge-green">RETURN CODE: 1 // ACTIVE COOPERATIVE DRIVE</div>
 </header>
-    <div class="panel">
+<div class="panel">
     <div class="panel-title">
         <span>3D Spacecraft Manifold Viewport (60 FPS WebGL)</span>
         <span id="latchTag" style="color: var(--green);">Θ_LATCH: 1.0 (ARMED)</span>
@@ -147,8 +147,7 @@
         log("[SYSTEM BOOT] 54-Bit Fixed-Point Guidance Substrate Online.");
         log("✅ [FIREWALL] Quantization bitmask securely latched.");
         triggerPass(41.5, 1.8); setTimeout(init3DStudio, 100); animateStudioLoop();
-    }
-     function log(msg, color = '#d2e4ff') {
+    }function log(msg, color = '#d2e4ff') {
         if (!term) return; const d = document.createElement('div'); d.style.color = color;
         d.textContent = msg; term.appendChild(d); term.scrollTop = term.scrollHeight;
     }

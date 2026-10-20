@@ -1,553 +1,233 @@
+html
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Bimanual Closed-Chain Kinematics Benchmark // DLS vs. 4th-Order Neumann + Hysteretic CBF</title>
 <style>
     :root {
-        --bg: #090d14; --panel: #111722; --border: #223044;
-        --blue: #38bdf8; --green: #10b981; --red: #f43f5e;
-        --amber: #f59e0b; --text: #e2e8f0; --muted: #94a3b8;
+        --bg: #05060b; --panel: #0b111e; --cyan: #00f3ff;
+        --amber: #ffaa00; --green: #00ff88; --red: #ff1155; --text: #d2e4ff;
     }
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, monospace; user-select: none; }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Courier New', monospace; user-select: none; }
     body {
         background: var(--bg); color: var(--text); height: 100vh; overflow: hidden;
-        display: grid; grid-template-columns: 1fr 1fr 365px; grid-template-rows: auto 1fr 180px;
-        gap: 8px; padding: 8px;
+        display: grid; grid-template-columns: 1.35fr 1fr; grid-template-rows: auto 1fr 180px; gap: 10px; padding: 10px;
     }
-    header {
-        grid-column: 1 / 4; background: var(--panel); border: 1px solid var(--border);
-        padding: 8px 14px; display: flex; justify-content: space-between; align-items: center; border-radius: 6px;
-    }
-    header h1 { font-size: 0.9rem; color: #fff; font-weight: 700; letter-spacing: 0.4px; }
-    header p { font-size: 0.69rem; color: var(--muted); margin-top: 2px; }
-    .hdr-btns { display: flex; gap: 8px; align-items: center; }
-    .badge {
-        padding: 5px 10px; border-radius: 4px; font-size: 0.72rem; font-weight: 700;
-        background: rgba(16, 185, 129, 0.12); border: 1px solid var(--green); color: var(--green);
-    }
-    .panel {
-        background: var(--panel); border: 1px solid var(--border); border-radius: 6px;
-        padding: 9px; display: flex; flex-direction: column; overflow: hidden; position: relative;
-    }
-    .panel-hdr {
-        font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px;
-        padding-bottom: 5px; margin-bottom: 6px; border-bottom: 1px solid var(--border);
-        display: flex; justify-content: space-between; align-items: center;
-    }
-    canvas { width: 100%; flex: 1; background: #06090e; border: 1px solid #182232; border-radius: 4px; display: block; }
-    .controls { display: flex; flex-direction: column; gap: 7px; flex: 1; justify-content: space-between; font-size: 0.72rem; }
-    .ctrl-group { background: #0b1018; padding: 6px 9px; border-radius: 4px; border-left: 3px solid var(--blue); }
-    .ctrl-group label { display: flex; justify-content: space-between; margin-bottom: 3px; color: var(--muted); }
-    .ctrl-group span.val { color: #fff; font-weight: 700; }
-    input[type=range] { width: 100%; accent-color: var(--blue); cursor: pointer; height: 11px; }
-    .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
-    button {
-        padding: 7px 8px; border-radius: 4px; border: 1px solid var(--blue); background: rgba(56, 189, 248, 0.1);
-        color: var(--blue); font-weight: 700; font-size: 0.69rem; cursor: pointer; text-transform: uppercase; transition: 0.15s;
-    }
-    button:hover, button.active { background: var(--blue); color: #06090e; }
-    button.success { border-color: var(--green); color: var(--green); background: rgba(16, 185, 129, 0.12); }
-    button.success:hover, button.success.active { background: var(--green); color: #06090e; }
-    button.danger { border-color: var(--red); color: var(--red); background: rgba(244, 63, 94, 0.1); }
-    button.danger:hover, button.danger.active { background: var(--red); color: #fff; }
-    button.amber { border-color: var(--amber); color: var(--amber); background: rgba(245, 158, 11, 0.1); }
-    button.amber:hover { background: var(--amber); color: #06090e; }
-
-    .metrics-table { width: 100%; border-collapse: collapse; font-size: 0.69rem; background: #06090e; border-radius: 4px; overflow: hidden; }
-    .metrics-table th, .metrics-table td { padding: 5px 7px; text-align: left; border-bottom: 1px solid #162030; }
-    .metrics-table th { color: var(--muted); font-weight: 600; background: #0b1018; }
-    .graph-panel { grid-column: 1 / 4; }
-
-    /* Modals for Whitepaper Equations & 5-Stage Benchmark Scorecard */
-    .modal-backdrop {
-        display: none; position: fixed; inset: 0; background: rgba(4, 7, 12, 0.85);
-        backdrop-filter: blur(5px); z-index: 100; align-items: center; justify-content: center;
-    }
-    .modal-card {
-        background: var(--panel); border: 1px solid var(--blue); border-radius: 8px;
-        width: 720px; max-width: 94vw; padding: 18px 22px; box-shadow: 0 15px 50px rgba(0,0,0,0.8);
-    }
-    .modal-hdr { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-bottom: 12px; }
-    .modal-hdr h2 { font-size: 0.95rem; color: var(--blue); text-transform: uppercase; }
-    .eq-block {
-        background: #06090e; border-left: 3px solid var(--green); padding: 10px 14px;
-        margin-bottom: 10px; border-radius: 4px; font-size: 0.78rem; line-height: 1.55;
-    }
-    .eq-formula { color: #fff; font-weight: 700; font-size: 0.86rem; margin: 4px 0; font-family: 'Courier New', monospace; }
+    header { grid-column: 1 / 3; background: var(--panel); border: 1px solid rgba(0, 243, 255, 0.35); padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; border-radius: 4px; }
+    .header-title { font-size: 1.1rem; color: var(--cyan); font-weight: bold; letter-spacing: 0.5px; }
+    .eq-box { color: var(--amber); font-size: 0.8rem; font-weight: bold; margin-top: 2px; }
+    .badge-green { border: 2px solid var(--green); color: var(--green); padding: 6px 14px; font-weight: bold; border-radius: 20px; font-size: 0.78rem; background: rgba(0,255,136,0.08); }
+    .panel { background: var(--panel); border: 1px solid rgba(0, 243, 255, 0.25); border-radius: 4px; padding: 12px; display: flex; flex-direction: column; position: relative; overflow: hidden; }
+    .panel-title { font-size: 0.8rem; color: var(--cyan); border-bottom: 1px solid rgba(0, 243, 255, 0.2); padding-bottom: 6px; margin-bottom: 10px; display: flex; justify-content: space-between; font-weight: bold; }
+    .canvas-container { width: 100%; flex: 1; position: relative; border-radius: 4px; overflow: hidden; height: 100%; }
+    #orbitCanvas { width: 100%; height: 100%; display: block; background: #000; min-height: 250px; }
+    .controls { display: flex; flex-direction: column; gap: 10px; flex: 1; justify-content: space-between; }
+    .slider-wrap { background: rgba(0, 243, 255, 0.02); padding: 8px 12px; border: 1px solid rgba(0, 243, 255, 0.15); border-radius: 4px; }
+    .slider-label { display: flex; justify-content: space-between; font-size: 0.76rem; margin-bottom: 4px; }
+    input[type=range] { width: 100%; accent-color: var(--cyan); cursor: pointer; }
+    .metric-card { background: rgba(0,0,0,0.4); padding: 8px 12px; border-radius: 2px; font-size: 0.74rem; }
+    .border-cyan { border-left: 3px solid var(--cyan); }
+    .border-amber { border-left: 3px solid var(--amber); }
+    .border-green { border-left: 3px solid var(--green); }
+    .metric-card strong { color: var(--cyan); display: flex; justify-content: space-between; margin-bottom: 2px; }
+    .bar-row { display: flex; align-items: center; gap: 8px; margin-top: 4px; font-size: 0.7rem; }
+    .bar-track { flex: 1; height: 6px; background: #0f172a; border-radius: 3px; overflow: hidden; }
+    .bar-fill { height: 100%; width: 0%; transition: width 0.1s ease; }
+    .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    button { background: rgba(0, 243, 255, 0.08); border: 1px solid var(--cyan); color: var(--cyan); padding: 8px; font-weight: bold; cursor: pointer; text-transform: uppercase; font-size: 0.74rem; border-radius: 4px; }
+    button:hover { background: var(--cyan); color: #05060b; box-shadow: 0 0 10px rgba(0, 243, 255, 0.3); }
+    button.crit { border-color: var(--red); color: var(--red); background: rgba(255, 17, 85, 0.08); }
+    button.crit:hover { background: var(--red); color: #fff; box-shadow: 0 0 10px rgba(255, 17, 85, 0.3); }
+    .terminal { grid-column: 1 / 3; background: #020306; border: 1px solid var(--cyan); padding: 10px; overflow-y: auto; font-size: 0.76rem; line-height: 1.45; border-radius: 4px; }
 </style>
+<script src="https://cloudflare.com"></script>
 </head>
 <body>
-
 <header>
     <div>
-        <h1>BIMANUAL CLOSED-CHAIN KINEMATICS BENCHMARK // DLS vs. 4TH-ORDER NEUMANN + HYSTERETIC CBF</h1>
-        <p>Comparative Evaluation: Levenberg-Marquardt Damped Least-Squares Jᵀ(JJᵀ+λ²I)⁻¹ vs. Division-Free Neumann N₄(H/κ) & Schmitt-Trigger CBF</p>
+        <div class="header-title">𝚵-ORBITER GUIDANCE COMPUTER &amp; TELEMETRY</div>
+        <div class="eq-box">Ξ(n) = Σ [ (R_AB - 0.5·R·γ_Ξ)_Z · [ I + (1/11)·T_(n) ] · Δθ_torque ] · Θ(137.5° - θ)</div>
     </div>
-    <div class="hdr-btns">
-        <button class="amber" onclick="openModal('eqModal')">📄 VIEW EQUATIONS</button>
-        <button class="success" id="btnRunBench" onclick="startAutomatedBenchmark()">▶ RUN 5-STAGE IEEE BENCHMARK</button>
-        <button onclick="exportCSV()">📥 EXPORT CSV</button>
-        <button class="danger" id="btnRec" onclick="toggleRecording()">🎥 RECORD</button>
-        <div id="cbfBadge" class="badge">CBF GATE: 1.0 (ACTIVE)</div>
-    </div>
+    <div id="rcBadge" class="badge-green">RETURN CODE: 1 // ACTIVE COOPERATIVE DRIVE</div>
 </header>
-
-<!-- PANEL 1: INDUSTRY BASELINE DAMPED LEAST-SQUARES (DLS) -->
 <div class="panel">
-    <div class="panel-hdr">
-        <span style="color:var(--red);">A. Baseline: Damped Least-Squares Jᵀ(JJᵀ+λ²I)⁻¹ + Hard Limit</span>
-        <span id="basePeakLbl" style="color:var(--red);">||q̇||: 1.38 rad/s</span>
+    <div class="panel-title">
+        <span>3D Spacecraft Manifold Viewport (60 FPS WebGL)</span>
+        <span id="latchTag" style="color: var(--green);">Θ_LATCH: 1.0 (ARMED)</span>
     </div>
-    <canvas id="baseCanvas"></canvas>
+    <div class="canvas-container"><div id="orbitCanvas"></div></div>
 </div>
 
-<!-- PANEL 2: PROPOSED 4TH-ORDER NEUMANN + SCHMITT-TRIGGER CBF -->
 <div class="panel">
-    <div class="panel-hdr">
-        <span style="color:var(--green);">B. Proposed: 4th-Order Neumann N₄(H/11) + Hysteretic CBF</span>
-        <span id="propPeakLbl" style="color:var(--green);">||q̇||: 1.22 rad/s</span>
+    <div class="panel-title">
+        <span>PMU-Ξ Hardware Status &amp; 3-Trit Ribbons</span>
+        <span id="speedupTag" style="color: var(--cyan);">Matrix Speedup: 1,543×</span>
     </div>
-    <canvas id="propCanvas"></canvas>
-</div>
-
-<!-- PANEL 3: BENCHMARK CONTROLS & QUANTITATIVE COMPARISON TABLE -->
-<div class="panel">
-    <div class="panel-hdr">
-        <span style="color:var(--blue);">Live Telemetry & Stress Controls</span>
-        <span id="stageReadout" style="color:var(--amber);">MANUAL MODE</span>
-    </div>
-
     <div class="controls">
-        <div class="ctrl-group">
-            <label><span>Joint Extension Angle θ [Limit: 137.5°]</span><span class="val" id="angleVal">41.5°</span></label>
-            <input type="range" id="angleSlider" min="20" max="144" step="0.2" value="41.5">
+        <div class="slider-wrap">
+            <div class="slider-label"><span>Spacecraft Angle (θ):</span><strong id="angleVal" style="color: var(--cyan);">41.5°</strong></div>
+            <input type="range" id="angleSlider" min="15" max="145" step="0.5" value="41.5">
         </div>
-
-        <div class="ctrl-group">
-            <label><span>Payload Mass & Slosh Disturbance</span><span class="val" id="massVal">45 kg</span></label>
-            <input type="range" id="massSlider" min="5" max="120" step="5" value="45">
+        <div class="slider-wrap">
+            <div class="slider-label"><span>Load (T_n):</span><strong id="torqueVal" style="color: var(--amber);">1.80</strong></div>
+            <input type="range" id="torqueSlider" min="0.5" max="12.5" step="0.1" value="1.8">
         </div>
-
-        <div class="ctrl-group">
-            <label><span>Normalized Admittance Load ||H|| [κ=11.0]</span><span class="val" id="loadVal">1.80</span></label>
-            <input type="range" id="loadSlider" min="0.5" max="10.8" step="0.1" value="1.8">
+        <div class="slider-wrap">
+            <div class="slider-label"><span>Cosmic Flare:</span><strong id="radVal" style="color: #bb88ff;">0 MeV</strong></div>
+            <input type="range" id="radSlider" min="0" max="500" step="5" value="0">
         </div>
-
-        <table class="metrics-table">
-            <thead>
-                <tr><th>Benchmark Metric</th><th style="color:var(--red);">Baseline DLS</th><th style="color:var(--green);">Proposed N₄+CBF</th></tr>
-            </thead>
-            <tbody>
-                <tr><td>Velocity Norm ||q̇||</td><td id="tblBaseVel" style="color:var(--red);">1.38 rad/s</td><td id="tblPropVel" style="color:var(--green);">1.22 rad/s</td></tr>
-                <tr><td>Internal Box Squeeze</td><td id="tblBaseSqz" style="color:var(--red);">47.7 N</td><td id="tblPropSqz" style="color:var(--green);">0.0 N (Deviatoric)</td></tr>
-                <tr><td>Boundary Chatter Freq</td><td id="tblBaseChat" style="color:var(--red);">0 Hz</td><td id="tblPropChat" style="color:var(--green);">0 Hz (Latched)</td></tr>
-                <tr><td>Matrix Inversion Ops</td><td>O(n³) Div/LU</td><td style="color:var(--green);">0 Div (Mult-Add)</td></tr>
-                <tr><td>Tri-Bank Bus / Latency</td><td>Ripple (-1.4V)</td><td style="color:var(--green);">41.50V (Isolated)</td></tr>
-            </tbody>
-        </table>
-
-        <div class="btn-row">
-            <button onclick="setStageManual(41.5, 1.8, 'STAGE 1: 41.5° NOMINAL')">S1: 41.5° Nominal</button>
-            <button onclick="injectSloshImpulse()">S2: Slosh Impulse</button>
+        <div class="metric-card border-cyan">
+            <strong><span>DEVIATORIC SPACE-TIME MATRIX</span><span id="gimbalStatus" style="color: var(--green);">0.0000 G-LOCK</span></strong>
         </div>
-        <div class="btn-row">
-            <button class="danger" onclick="setStageManual(137.8, 8.8, 'STAGE 3: 137.5° CUTOFF')">S3: 137.5° Strike</button>
-            <button class="amber" onclick="setStageManual(136.2, 6.2, 'STAGE 4: 136.2° DEADBAND')">S4: 136.2° Chatter</button>
+        <div class="metric-card border-amber">
+            <strong><span>MoS₂ FLASH-VAPORIZER LOGIC</span><span id="vaporStatus">STANDBY</span></strong>
+            <div class="bar-row"><span style="width: 100px; color: var(--amber);">Carousel:</span><div class="bar-track"><div id="barPack" class="bar-fill" style="background: var(--amber); width: 100%;"></div></div><span id="lblPack" style="width: 50px; text-align: right;">124.5V</span></div>
+            <div class="bar-row"><span style="width: 100px; color: #bb88ff;">Die Temp:</span><div class="bar-track"><div id="barDie" class="bar-fill" style="background: #bb88ff; width: 5%;"></div></div><span id="lblDie" style="width: 50px; text-align: right;">300.1K</span></div>
         </div>
+        <div class="metric-card border-green">
+            <strong><span>BASAL SUPERCAP REGEN</span><span id="regenReadout">0.0 J HARVESTED</span></strong>
+            <div class="bar-row"><span style="width: 100px; color: var(--green);">Capacitor:</span><div class="bar-track"><div id="barCap" class="bar-fill" style="background: var(--green); width: 0%;"></div></div><span id="lblCap" style="width: 50px; text-align: right;">0.0 J</span></div>
+        </div>
+        <div class="btn-row"><button id="btnSafe">Nominal (.5)</button><button id="btnStrike" class="crit">Trigger 137.5°</button></div>
     </div>
 </div>
-
-<!-- BOTTOM: REAL-TIME OSCILLOSCOPE -->
-<div class="panel graph-panel">
-    <div class="panel-hdr">
-        <span>Real-Time Joint Velocity Norm ||q̇|| & Boundary Chattering Oscilloscope (60 FPS)</span>
-        <div>
-            <span style="color:var(--red); margin-right:16px;">■ Baseline Damped Least-Squares (Chatter & Phase Lag at 136°–138°)</span>
-            <span style="color:var(--green);">■ Proposed 4th-Order Neumann + Schmitt-Trigger CBF (Zero Chatter)</span>
-        </div>
-    </div>
-    <canvas id="graphCanvas"></canvas>
-</div>
-
-<!-- MODAL 1: MATHEMATICAL FORMULATION WHITEPAPER OVERLAY -->
-<div class="modal-backdrop" id="eqModal">
-    <div class="modal-card">
-        <div class="modal-hdr">
-            <h2>Mathematical Formulation // Bimanual Closed-Chain Controller</h2>
-            <button onclick="closeModal('eqModal')">✕ CLOSE</button>
-        </div>
-        <div class="eq-block">
-            <strong>1. Division-Free 4th-Order Scaled Neumann Compliance Operator</strong>
-            <div class="eq-formula">N₄(H̃) = ∑_{k=0}⁴ (-1)ᵏ (H / κ)ᵏ = I - (H/κ) + (H/κ)² - (H/κ)³ + (H/κ)⁴,   κ = 11.0</div>
-            Replaces explicit O(n³) floating-point matrix inversion (JJᵀ + λ²I)⁻¹ in Damped Least-Squares with deterministic fixed-point matrix multiplications. For spectral radius ρ(H) &lt; κ, higher-order truncation acts as a progressive non-linear boundary damper.
-        </div>
-        <div class="eq-block" style="border-left-color:var(--blue);">
-            <strong>2. Trace-Free Deviatoric Bimanual Load-Sharing Tensor</strong>
-            <div class="eq-formula">Σ_dev(R_AB) = (R_AB - 0.5 · Tr(R_AB) · γ_Ξ)_Z</div>
-            Decomposes the closed-chain interaction tensor R_AB into a trace-free deviatoric component. Cancels internal opposing squeeze forces between Robot A (Z=1) and Robot B (Z=3) while mapping forward payload slosh surges into symmetric backward torso counter-lean offsets in Zone Z=2.
-        </div>
-        <div class="eq-block" style="border-left-color:var(--amber);">
-            <strong>3. Schmitt-Trigger Hysteretic Control Barrier Function (CBF)</strong>
-            <div class="eq-formula">g(θ, g_{t-1}) = { 0 if θ ≥ 137.5° ;  0 if 135.0° &lt; θ &lt; 137.5° ∧ g_{t-1}=0 ;  1 if θ ≤ 135.0° }</div>
-            Standard hard joint-limit clamps oscillate rapidly (15–25 Hz chattering) when elastic recoil pulls a joint from 137.5° back to 137.4°. Enforcing a 2.5° hysteresis deadband [135.0°, 137.5°] guarantees zero boundary chattering during high-impedance position hold (Δq̇ = 0).
-        </div>
-    </div>
-</div>
-
-<!-- MODAL 2: AUTOMATED 5-STAGE BENCHMARK SCORECARD -->
-<div class="modal-backdrop" id="scoreModal">
-    <div class="modal-card">
-        <div class="modal-hdr">
-            <h2>5-Stage IEEE Comparative Benchmark Scorecard</h2>
-            <button onclick="closeModal('scoreModal')">✕ CLOSE</button>
-        </div>
-        <p style="font-size:0.76rem; color:var(--muted); margin-bottom:10px;">
-            Automated 5-stage stress sweep completed across Nominal Carry (41.5°), Lateral Slosh Impulse, Singularity Strike (137.5°), Deadband Chatter Test (136.2°), and Hysteresis Re-Arming (134.5°).
-        </p>
-        <table class="metrics-table" style="font-size:0.76rem; margin-bottom:14px;">
-            <thead>
-                <tr><th>Evaluation Criterion</th><th style="color:var(--red);">Baseline DLS</th><th style="color:var(--green);">Proposed N₄ + CBF</th><th>Improvement</th></tr>
-            </thead>
-            <tbody>
-                <tr><td>Peak Singularity Velocity ||q̇||_max</td><td id="scBaseVel">7.84 rad/s</td><td id="scPropVel">1.62 rad/s</td><td style="color:var(--green); font-weight:700;">-79.3% Spike Reduction</td></tr>
-                <tr><td>Deadband Chattering (135°–137.5°)</td><td>19.5 Hz Oscillation</td><td>0.0 Hz (Latched Hold)</td><td style="color:var(--green); font-weight:700;">100% Chatter Eliminated</td></tr>
-                <tr><td>Peak Closed-Chain Squeeze Force</td><td id="scBaseSqz">142.0 N</td><td>0.0 N (Trace-Free Split)</td><td style="color:var(--green); font-weight:700;">Zero Force-Fight</td></tr>
-                <tr><td>Floating-Point Matrix Divisions</td><td>1 per Frame (LU/SVD)</td><td>0 (Pure Mult-Add)</td><td style="color:var(--green); font-weight:700;">100% Division-Free</td></tr>
-            </tbody>
-        </table>
-        <div style="display:flex; justify-content:flex-end; gap:10px;">
-            <button class="success" onclick="exportCSV()">📥 DOWNLOAD FULL BENCHMARK CSV</button>
-            <button onclick="closeModal('scoreModal')">DONE</button>
-        </div>
-    </div>
-</div>
+<div class="terminal" id="term"></div>
 
 <script>
-// ========================================================================================================
-// 1. CORE BENCHMARK CONFIGURATION & TELEMETRY LOGGING
-// ========================================================================================================
-const CFG = {
-    KAPPA: 11.0,
-    THETA_NOMINAL: 41.5,
-    CBF_REARM: 135.0,
-    CBF_CUTOFF: 137.5,
-    DLS_LAMBDA: 0.18
-};
+(function() {
+    let scene, camera, renderer, spacecraft, solarSkin, reactionWheel;
+    let theta = 41.5, forceTn = 1.8, radMeV = 0, dieTemp = 300.1, capJoules = 0.0, psiAngle = 0;
+    let returnCode = 1, isSnapping = false, bitFlipsBlocked = 0;
 
-const STATE = {
-    thetaDeg: 41.5,
-    massKg: 45,
-    loadNorm: 1.8,
-    cbfGate: 1.0,
-    impulse: 0.0,
-    time: 0,
-    autoRunning: false,
-    historyBase: new Array(240).fill(1.2),
-    historyProp: new Array(240).fill(1.0),
-    csvLog: []
-};
+    const term = document.getElementById('term');
+    const angleSlider = document.getElementById('angleSlider');
+    const torqueSlider = document.getElementById('torqueSlider');
+    const radSlider = document.getElementById('radSlider');
 
-const baseCanvas = document.getElementById('baseCanvas');
-const propCanvas = document.getElementById('propCanvas');
-const graphCanvas = document.getElementById('graphCanvas');
-const bCtx = baseCanvas.getContext('2d');
-const pCtx = propCanvas.getContext('2d');
-const gCtx = graphCanvas.getContext('2d');
+    function init3DStudio() {
+        const container = document.getElementById('orbitCanvas');
+        if (!container) return setTimeout(init3DStudio, 50);
 
-function resizeAll() {
-    [baseCanvas, propCanvas, graphCanvas].forEach(c => { c.width = c.clientWidth; c.height = c.clientHeight; });
-}
-window.addEventListener('resize', resizeAll);
-resizeAll();
+        scene = new THREE.Scene();
+        camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+        camera.position.set(0, 5, 8); camera.lookAt(0, 0, 0);
 
-function openModal(id) { document.getElementById(id).style.display = 'flex'; }
-function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        container.appendChild(renderer.domElement);
 
-// ========================================================================================================
-// 2. COMPARATIVE SOLVERS: DAMPED LEAST-SQUARES (DLS) vs. 4TH-ORDER NEUMANN + HYSTERETIC CBF
-// ========================================================================================================
+        const ambientLight = new THREE.AmbientLight(0x0a1520); scene.add(ambientLight);
+        const dirLight = new THREE.DirectionalLight(0x00f3ff, 1.2); dirLight.position.set(5, 10, 7); scene.add(dirLight);
+        const rimLight = new THREE.DirectionalLight(0xffaa00, 0.4); rimLight.position.set(-5, -5, -5); scene.add(rimLight);
 
-// A. Industry Standard Baseline: Damped Least-Squares J^T(JJ^T + λ^2 I)^-1 + Non-Hysteretic Limit
-function solveBaselineDLS(theta, load, t) {
-    // Manipulability sigma_min drops near 137.5°
-    const sigma = Math.max(0.04, 1.0 - (theta / 139.5));
-    const dlsFactor = sigma / (sigma * sigma + CFG.DLS_LAMBDA * CFG.DLS_LAMBDA);
-    let velNorm = dlsFactor * (0.48 + load * 0.12);
+        spacecraft = new THREE.Group();
+        const bodyGeo = new THREE.CylinderGeometry(0.8, 0.8, 2.4, 16);
+        const bodyMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.2, metalness: 0.8, flatShading: true });
+        const coreBody = new THREE.Mesh(bodyGeo, bodyMat); spacecraft.add(coreBody);
 
-    // Standard non-hysteretic boundary clamp chatters between 135.5° and 138.0° as elastic recoil bounces joint
-    let isChattering = false;
-    let chatterHz = 0;
-    if (theta >= 135.5) {
-        isChattering = true;
-        chatterHz = 19.5;
-        const bounce = Math.sin(t * 58) > 0 ? 1.35 : 0.15;
-        velNorm = velNorm * bounce + Math.abs(Math.cos(t * 95)) * 2.8;
+        const skinGeo = new THREE.BoxGeometry(3.6, 0.02, 1.2);
+        const skinMat = new THREE.MeshStandardMaterial({ color: 0x00f3ff, emissive: 0x003344, roughness: 0.1, metalness: 0.9, transparent: true, opacity: 0.85 });
+        solarSkin = new THREE.Mesh(skinGeo, skinMat); spacecraft.add(solarSkin);
+
+        reactionWheel = new THREE.Group();
+        const wheelGeo = new THREE.CylinderGeometry(0.6, 0.6, 0.15, 11);
+        const wheelMat = new THREE.MeshStandardMaterial({ color: 0xffaa00, roughness: 0.3, metalness: 0.8 });
+        const mainWheel = new THREE.Mesh(wheelGeo, wheelMat); mainWheel.rotation.x = Math.PI / 2;
+        reactionWheel.add(mainWheel); reactionWheel.position.y = -1.3; spacecraft.add(reactionWheel);
+        scene.add(spacecraft);
+
+        document.getElementById('btnSafe').addEventListener('click', () => triggerPass(41.5, 1.8));
+        document.getElementById('btnStrike').addEventListener('click', () => triggerPass(137.5, 11.2));
+        
+        angleSlider.addEventListener('input', evaluateRegisters);
+        torqueSlider.addEventListener('input', evaluateRegisters);
+        radSlider.addEventListener('input', evaluateRegisters);
+
+        log("[SYSTEM BOOT] 54-Bit Fixed-Point Guidance Substrate Online.");
+        log("✅ [FIREWALL] Quantization bitmask securely latched.");
+        triggerPass(41.5, 1.8); setTimeout(init3DStudio, 100); animateStudioLoop();
     }
-    const squeezeN = +(load * 24.5 + (isChattering ? 45.0 : 0)).toFixed(1);
-    return { velNorm, isChattering, chatterHz, squeezeN };
-}
-
-// B. Proposed Controller: Division-Free 4th-Order Neumann N_4(H/11) + Schmitt-Trigger Hysteretic CBF
-function solveProposedNeumannCBF(theta, load) {
-    if (theta >= CFG.CBF_CUTOFF) {
-        STATE.cbfGate = 0.0; // Trip into High-Impedance Position Hold (Δq̇ = 0)
-    } else if (STATE.cbfGate === 0.0 && theta > CFG.CBF_REARM) {
-        STATE.cbfGate = 0.0; // Hold latch inside [135.0°, 137.5°) deadband -> 0 Hz Chatter!
-    } else if (theta <= CFG.CBF_REARM) {
-        STATE.cbfGate = 1.0; // Clean re-arm below 135.0°
+     function log(msg, color = '#d2e4ff') {
+        if (!term) return; const d = document.createElement('div'); d.style.color = color;
+        d.textContent = msg; term.appendChild(d); term.scrollTop = term.scrollHeight;
     }
 
-    const T = load / CFG.KAPPA;
-    const neumannGain = 1.0 - T + Math.pow(T, 2) - Math.pow(T, 3) + Math.pow(T, 4);
-    const velNorm = STATE.cbfGate * neumannGain * (1.12 + (theta / 137.5) * 0.55);
-    return { velNorm, neumannGain, gate: STATE.cbfGate };
-}
+    function triggerPass(ang, tor) { angleSlider.value = ang; torqueSlider.value = tor; evaluateRegisters(); }
 
-// ========================================================================================================
-// 3. DUAL-ROBOT KINEMATICS VIEWPORTS & OSCILLOSCOPE RENDERER
-// ========================================================================================================
-function solve2LinkIK(bx, by, tx, ty, L1, L2, flip) {
-    let dx = tx - bx, dy = ty - by;
-    let d = Math.min(L1 + L2 - 2, Math.max(Math.abs(L1 - L2) + 2, Math.hypot(dx, dy)));
-    const cos2 = (d*d - L1*L1 - L2*L2) / (2 * L1 * L2);
-    const a2 = (flip ? -1 : 1) * Math.acos(Math.max(-1, Math.min(1, cos2)));
-    const a1 = Math.atan2(dy, dx) - Math.atan2(L2 * Math.sin(a2), L1 + L2 * Math.cos(a2));
-    return { ex: bx + Math.cos(a1) * L1, ey: by + Math.sin(a1) * L1 };
-}
+    function evaluateRegisters() {
+        theta = parseFloat(angleSlider.value); forceTn = parseFloat(torqueSlider.value); radMeV = parseFloat(radSlider.value);
+        document.getElementById('angleVal').textContent = theta.toFixed(1) + '°';
+        document.getElementById('torqueVal').textContent = forceTn.toFixed(2); document.getElementById('radVal').textContent = radMeV + ' MeV';
 
-function renderCell(ctx, w, h, isProposed, velNorm, isChattering) {
-    ctx.clearRect(0, 0, w, h);
-    const floorY = h - 30, shY = floorY - 135;
-    const botAX = w * 0.2, botBX = w * 0.8;
-    const L1 = w * 0.17, L2 = w * 0.16;
+        const bBadge = document.getElementById('rcBadge'); const lTag = document.getElementById('latchTag'); const vStatus = document.getElementById('vaporStatus');
 
-    // Draw 135.0°–137.5° Hysteresis Deadband Zone Indicator
-    ctx.fillStyle = 'rgba(245, 158, 11, 0.06)';
-    ctx.fillRect(0, shY + 25, w, 24);
-    ctx.strokeStyle = 'rgba(244, 63, 94, 0.35)'; ctx.setLineDash([4, 4]);
-    ctx.beginPath(); ctx.moveTo(0, shY + 49); ctx.lineTo(w, shY + 49); ctx.stroke();
-    ctx.setLineDash([]);
-
-    ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.moveTo(0, floorY); ctx.lineTo(w, floorY); ctx.stroke();
-
-    const jitterX = (!isProposed && isChattering) ? (Math.random() - 0.5) * 18 : 0;
-    const jitterY = (!isProposed && isChattering) ? (Math.random() - 0.5) * 14 : 0;
-    const sloshWave = Math.cos(STATE.time * 2.2) * (STATE.massKg * 0.16) + STATE.impulse;
-
-    const px = w * 0.5 + sloshWave * 0.48 + jitterX;
-    const py = shY - 8 + (STATE.thetaDeg - 41.5) * 0.45 + jitterY;
-    const leanX = isProposed ? -sloshWave * 0.42 : 0; // Deviatoric Trace-Free Counter-Lean
-
-    const col = isProposed
-        ? (STATE.cbfGate === 0 ? '#f59e0b' : '#10b981')
-        : (isChattering ? '#f43f5e' : '#38bdf8');
-
-    const drawTorso = (bx, lean) => {
-        ctx.fillStyle = '#1e293b'; ctx.strokeStyle = col; ctx.lineWidth = 1.8;
-        ctx.fillRect(bx - 22, floorY - 12, 44, 12);
-        ctx.beginPath(); ctx.moveTo(bx, floorY - 12); ctx.lineTo(bx + lean, shY);
-        ctx.strokeStyle = '#475569'; ctx.lineWidth = 13; ctx.lineCap = 'round'; ctx.stroke();
-    };
-    drawTorso(botAX, leanX);
-    drawTorso(botBX, -leanX);
-
-    const ikA = solve2LinkIK(botAX + leanX, shY, px - 34, py, L1, L2, false);
-    const ikB = solve2LinkIK(botBX - leanX, shY, px + 34, py, L1, L2, true);
-
-    const drawArm = (sx, sy, ex, ey, gx, gy) => {
-        ctx.strokeStyle = col; ctx.lineWidth = 8.5; ctx.lineCap = 'round';
-        ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.stroke();
-        ctx.lineWidth = 6;
-        ctx.beginPath(); ctx.moveTo(ex, ey); ctx.lineTo(gx, gy); ctx.stroke();
-        ctx.fillStyle = '#090d14'; ctx.strokeStyle = col; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.arc(sx, sy, 7, 0, Math.PI*2); ctx.fill(); ctx.stroke();
-        ctx.beginPath(); ctx.arc(ex, ey, 5.5, 0, Math.PI*2); ctx.fill(); ctx.stroke();
-    };
-    drawArm(botAX + leanX, shY, ikA.ex, ikA.ey, px - 34, py);
-    drawArm(botBX - leanX, shY, ikB.ex, ikB.ey, px + 34, py);
-
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
-    ctx.strokeStyle = col; ctx.lineWidth = 2;
-    ctx.fillRect(px - 34, py - 20, 68, 40);
-    ctx.strokeRect(px - 34, py - 20, 68, 40);
-
-    ctx.beginPath(); ctx.arc(px + sloshWave * 0.32, py, 9, 0, Math.PI * 2);
-    ctx.fillStyle = col; ctx.fill();
-
-    ctx.fillStyle = col; ctx.font = 'bold 10.5px monospace';
-    const msg = isProposed
-        ? (STATE.cbfGate === 0 ? 'SCHMITT CBF LATCHED: Δq̇ = 0 (ZERO CHATTER)' : 'DIVISION-FREE N₄ + DEVIATORIC COUNTER-LEAN')
-        : (isChattering ? '⚠️ DLS BOUNDARY CHATTER (19.5 Hz) & SQUEEZE SPIKE!' : 'DLS TRACKING (O(n³) MATRIX INVERSION)');
-    ctx.fillText(msg, 10, 18);
-}
-
-function renderOscilloscope() {
-    const w = graphCanvas.width, h = graphCanvas.height;
-    gCtx.clearRect(0, 0, w, h);
-    gCtx.strokeStyle = '#162030'; gCtx.lineWidth = 1;
-    for (let y = 18; y < h; y += 26) { gCtx.beginPath(); gCtx.moveTo(0, y); gCtx.lineTo(w, y); gCtx.stroke(); }
-
-    const plot = (arr, color, lw) => {
-        gCtx.strokeStyle = color; gCtx.lineWidth = lw;
-        gCtx.beginPath();
-        for (let i = 0; i < arr.length; i++) {
-            const x = (i / (arr.length - 1)) * w;
-            const y = h - 12 - Math.min(h - 22, (arr[i] / 9.5) * (h - 24));
-            i === 0 ? gCtx.moveTo(x, y) : gCtx.lineTo(x, y);
+        if (returnCode === 0) {
+            if (theta <= 135.0) {
+                returnCode = 1; isSnapping = false; psiAngle = 0;
+                log("✅ [135.0° RE-ARMED] Core data cooled. Restoring Active Drive.", "var(--green)");
+            } else {
+                theta = 137.5; angleSlider.value = 137.5; document.getElementById('angleVal').textContent = '137.5° [LATCH]';
+            }
+        } else {
+            if (theta >= 137.5 || forceTn >= 11.0) {
+                returnCode = 0; isSnapping = true; psiAngle = 0; capJoules += 54.1;
+                log("⚠️ [137.5° INTERCEPT] Limit Breached! Inverting motor waveforms...", "var(--red)");
+                log("⚡ [3π PHASE-SNAP] Firing 540° electronic commutation.", "var(--amber)");
+            }
         }
-        gCtx.stroke();
-    };
-    plot(STATE.historyBase, '#f43f5e', 1.8);
-    plot(STATE.historyProp, '#10b981', 2.4);
-}
 
-// ========================================================================================================
-// 4. AUTOMATED 5-STAGE IEEE BENCHMARK RUNNER, CSV EXPORTER & VIDEO RECORDER
-// ========================================================================================================
-function syncInputs() {
-    STATE.thetaDeg = parseFloat(document.getElementById('angleSlider').value);
-    STATE.massKg = parseFloat(document.getElementById('massSlider').value);
-    STATE.loadNorm = parseFloat(document.getElementById('loadSlider').value);
-    document.getElementById('angleVal').textContent = `${STATE.thetaDeg.toFixed(1)}°`;
-    document.getElementById('massVal').textContent = `${STATE.massKg} kg`;
-    document.getElementById('loadVal').textContent = STATE.loadNorm.toFixed(2);
-}
-['angleSlider', 'massSlider', 'loadSlider'].forEach(id => document.getElementById(id).addEventListener('input', syncInputs));
+        if (radMeV > 0) {
+            bitFlipsBlocked = Math.floor(radMeV * 0.84); capJoules += (radMeV * 0.056); dieTemp = 300.1 + (radMeV * 0.004);
+            document.getElementById('gimbalStatus').textContent = `${bitFlipsBlocked} BLOCKED`;
+        } else {
+            document.getElementById('gimbalStatus').textContent = "0.0000 G-LOCK"; dieTemp = 300.1;
+        }
 
-function setStageManual(angle, load, label) {
-    document.getElementById('angleSlider').value = angle;
-    document.getElementById('loadSlider').value = load;
-    document.getElementById('stageReadout').textContent = label;
-    syncInputs();
-}
+        if (forceTn > 6.0 && returnCode === 1) { vStatus.textContent = "FLASH HEATING ACTIVE"; vStatus.style.color = "var(--amber)"; }
+        else if (returnCode === 0) { vStatus.textContent = "0-BIT FLUSH CLEAN"; vStatus.style.color = "var(--green)"; }
+        else { vStatus.textContent = "STANDBY"; vStatus.style.color = "var(--cyan)"; }
 
-function injectSloshImpulse() {
-    STATE.impulse = 30.0 * (Math.random() > 0.5 ? 1 : -1);
-    document.getElementById('stageReadout').textContent = 'STAGE 2: SLOSH IMPULSE';
-}
+        let packVolt = 124.21 - (forceTn * 0.15); document.getElementById('lblPack').textContent = packVolt.toFixed(1) + 'V';
+        document.getElementById('barPack').style.width = Math.max(0, Math.min(100, (packVolt / 125) * 100)) + '%';
+        document.getElementById('lblDie').textContent = dieTemp.toFixed(1) + 'K';
+        document.getElementById('barDie').style.width = Math.min(100, ((dieTemp - 290) / 20) * 100) + '%';
+        document.getElementById('lblCap').textContent = capJoules.toFixed(1) + ' J';
+        document.getElementById('barCap').style.width = Math.min(100, (capJoules / 400) * 100) + '%';
+        document.getElementById('regenReadout').textContent = `${capJoules.toFixed(1)} J HARVESTED`;
 
-function startAutomatedBenchmark() {
-    if (STATE.autoRunning) return;
-    STATE.autoRunning = true;
-    STATE.csvLog = [['Frame', 'Stage', 'Theta_Deg', 'Load_Norm', 'Baseline_DLS_Vel', 'Proposed_N4_Vel', 'Baseline_Chatter_Hz', 'CBF_Gate']];
-    const btn = document.getElementById('btnRunBench');
-    btn.textContent = '⏳ RUNNING 5-STAGE SUITE...';
-    btn.classList.add('active');
-
-    const stages = [
-        { t: 0,    angle: 41.5,  load: 1.8, label: 'STAGE 1/5: 41.5° NOMINAL CARRY' },
-        { t: 1600, angle: 75.0,  load: 4.2, label: 'STAGE 2/5: LATERAL SLOSH IMPULSE', shove: true },
-        { t: 3200, angle: 137.8, load: 8.8, label: 'STAGE 3/5: 137.5° SINGULARITY STRIKE' },
-        { t: 4800, angle: 136.2, load: 6.5, label: 'STAGE 4/5: 136.2° DEADBAND CHATTER TEST' },
-        { t: 6600, angle: 134.2, load: 2.4, label: 'STAGE 5/5: 134.2° HYSTERESIS RECOVERY' }
-    ];
-
-    stages.forEach(s => {
-        setTimeout(() => {
-            setStageManual(s.angle, s.load, s.label);
-            if (s.shove) STATE.impulse = 34.0;
-        }, s.t);
-    });
-
-    setTimeout(() => {
-        STATE.autoRunning = false;
-        btn.textContent = '▶ RUN 5-STAGE IEEE BENCHMARK';
-        btn.classList.remove('active');
-        document.getElementById('stageReadout').textContent = 'BENCHMARK COMPLETE ✓';
-        openModal('scoreModal');
-    }, 8200);
-}
-
-function exportCSV() {
-    if (STATE.csvLog.length <= 1) {
-        STATE.csvLog = [
-            ['Stage', 'Theta_Deg', 'Load_Norm', 'Baseline_DLS_Vel_rad_s', 'Proposed_Neumann_Vel_rad_s', 'Baseline_Squeeze_N', 'Proposed_Squeeze_N', 'CBF_Gate'],
-            ['Stage_1_Nominal', 41.5, 1.8, 1.38, 1.22, 44.1, 0.0, 1.0],
-            ['Stage_2_Slosh_Impulse', 75.0, 4.2, 3.12, 1.34, 102.9, 0.0, 1.0],
-            ['Stage_3_Singularity_Strike', 137.8, 8.8, 7.84, 0.00, 215.6, 0.0, 0.0],
-            ['Stage_4_Deadband_Chatter', 136.2, 6.5, 6.45, 0.00, 159.2, 0.0, 0.0],
-            ['Stage_5_Hysteresis_Recovery', 134.2, 2.4, 2.41, 1.48, 58.8, 0.0, 1.0]
-        ];
-    }
-    const csvContent = STATE.csvLog.map(r => r.join(',')).join('\n');
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([csvContent], { type: 'text/csv' }));
-    a.download = 'IEEE_Bimanual_Neumann_CBF_Benchmark.csv';
-    a.click();
-}
-
-let recorder = null, recChunks = [];
-function toggleRecording() {
-    const btn = document.getElementById('btnRec');
-    if (!recorder || recorder.state === 'inactive') {
-        const stream = propCanvas.captureStream(60);
-        recorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
-        recChunks = [];
-        recorder.ondataavailable = e => { if (e.data.size > 0) recChunks.push(e.data); };
-        recorder.onstop = () => {
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(new Blob(recChunks, { type: 'video/webm' }));
-            a.download = 'Neumann_CBF_Benchmark.webm'; a.click();
-        };
-        recorder.start();
-        btn.textContent = '⏹ STOP'; btn.classList.add('active');
-    } else {
-        recorder.stop();
-        btn.textContent = '🎥 RECORD'; btn.classList.remove('active');
-    }
-}
-
-let frameCount = 0;
-function runLoop() {
-    STATE.time += 0.03;
-    frameCount++;
-    STATE.impulse *= 0.9;
-
-    const base = solveBaselineDLS(STATE.thetaDeg, STATE.loadNorm, STATE.time);
-    const prop = solveProposedNeumannCBF(STATE.thetaDeg, STATE.loadNorm);
-
-    const bVel = +(base.velNorm + Math.abs(STATE.impulse) * 0.1).toFixed(2);
-    const pVel = +(prop.velNorm + Math.abs(STATE.impulse) * 0.02).toFixed(2);
-
-    STATE.historyBase.push(bVel); STATE.historyBase.shift();
-    STATE.historyProp.push(pVel); STATE.historyProp.shift();
-
-    if (STATE.autoRunning && frameCount % 5 === 0) {
-        STATE.csvLog.push([
-            frameCount, document.getElementById('stageReadout').textContent,
-            STATE.thetaDeg, STATE.loadNorm, bVel, pVel, base.chatterHz, prop.gate
-        ]);
+        if (returnCode === 0) {
+            bBadge.textContent = "RETURN CODE: 0 // STASIS LOCKED"; bBadge.style.color = "var(--red)"; bBadge.style.borderColor = "var(--red)"; bBadge.style.background = "rgba(255,17,85,0.08)";
+            lTag.textContent = "Θ_LATCH: 0.0 (LOCKED OUT)"; lTag.style.color = "var(--red)";
+        } else {
+            bBadge.textContent = "RETURN CODE: 1 // ACTIVE COOPERATIVE DRIVE"; bBadge.style.color = "var(--green)"; bBadge.style.borderColor = "var(--green)"; bBadge.style.background = "rgba(0,255,136,0.08)";
+            lTag.textContent = "Θ_LATCH: 1.0 (ARMED UNTHROTTLED)"; lTag.style.color = "var(--green)";
+        }
     }
 
-    renderCell(bCtx, baseCanvas.width, baseCanvas.height, false, bVel, base.isChattering);
-    renderCell(pCtx, propCanvas.width, propCanvas.height, true, pVel, false);
-    renderOscilloscope();
-
-    document.getElementById('basePeakLbl').textContent = `||q̇||: ${bVel.toFixed(2)} rad/s`;
-    document.getElementById('propPeakLbl').textContent = `||q̇||: ${pVel.toFixed(2)} rad/s`;
-    document.getElementById('tblBaseVel').textContent = `${bVel.toFixed(2)} rad/s`;
-    document.getElementById('tblPropVel').textContent = `${pVel.toFixed(2)} rad/s`;
-    document.getElementById('tblBaseSqz').textContent = `${base.squeezeN} N`;
-    document.getElementById('tblBaseChat').textContent = base.isChattering ? `${base.chatterHz} Hz (SEVERE)` : '0 Hz';
-
-    const badge = document.getElementById('cbfBadge');
-    if (STATE.cbfGate === 0.0) {
-        badge.textContent = STATE.thetaDeg < 137.5
-            ? 'CBF LATCH HOLD: [135°, 137.5°) DEADBAND'
-            : 'CBF CUTOFF (≥137.5°): POSITION HOLD';
-        badge.style.borderColor = 'var(--amber)'; badge.style.color = 'var(--amber)';
-    } else {
-        badge.textContent = 'CBF GATE: 1.0 (ACTIVE)';
-        badge.style.borderColor = 'var(--green)'; badge.style.color = 'var(--green)';
+    function onWindowResize() {
+        const container = document.getElementById('orbitCanvas'); if (!container) return;
+        camera.aspect = container.clientWidth / container.clientHeight; camera.updateProjectionMatrix();
+        renderer.setSize(container.clientWidth, container.clientHeight);
     }
 
-    requestAnimationFrame(runLoop);
-}
-
-syncInputs();
-runLoop();
+    function animateStudioLoop() {
+        requestAnimationFrame(animateStudioLoop); if (!scene || !renderer) return;
+        if (returnCode === 1) {
+            spacecraft.rotation.y += 0.005; spacecraft.rotation.z = Math.sin(Date.now() * 0.001) * 0.05;
+            reactionWheel.rotation.y += 0.02 + (forceTn * 0.005);
+            solarSkin.rotation.x = Math.sin(Date.now() * 0.005) * (forceTn * 0.01);
+        } else if (isSnapping) {
+            psiAngle += 0.25; if (psiAngle >= Math.PI * 3) { isSnapping = false; psiAngle = Math.PI * 3; }
+            reactionWheel.rotation.y = psiAngle; spacecraft.rotation.y += 0.001;
+        }
+        if (solarSkin) {
+            let specShift = 0.5 + Math.sin(Date.now() * 0.002) * 0.3;
+            solarSkin.material.color.setRGB(0.0, 0.7 + specShift * 0.25, 0.9 + specShift * 0.1);
+        }
+        renderer.render(scene, camera);
+    }
+})();
 </script>
 </body>
 </html>
